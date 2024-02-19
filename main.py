@@ -22,10 +22,10 @@ class Ps4Controls(IntEnum):
     SHARE = 128
     OPTIONS = 129
     PS = 130
-    UP = 131
-    RIGHT = 132
-    DOWN = 133
-    LEFT = 134
+    UP = 11
+    RIGHT = 14
+    DOWN = 12
+    LEFT = 13
     TRIANGLE = 135
     CIRCLE = 136
     CROSS = 137
@@ -106,33 +106,89 @@ def axis_parser(axis_dict):
     return name_dict
 
 
-def send(state):
-    url = "http://192.168.4.1/js?"
+def IN_RANGE(x, a, b, delta):
+    if x < a:
+        return a
+    if x > b:
+        return b
+    return x + delta
 
+
+def DEG2RAD(x):
+    return x * 3.14159265358979323846 / 180
+
+
+arm_init_pos = {"T": 1041, "x": 311.94, "y": 1.91, "z": 232.72, "t": DEG2RAD(150)}
+arm_cur_pos = arm_init_pos
+
+
+def send(state):
+    tank_url = "http://192.168.43.159/js?"
+    arm_url = "http://192.168.43.103/js?"
     for i in range(4):
         print(f"{i}: {state[i]}")
-    speed = state[Ps4Controls.LEFT_STICK_Y] * 2
+    speed = state[Ps4Controls.LEFT_STICK_Y] * 1.2
     print(speed)
 
     leftX = state[Ps4Controls.LEFT_STICK_X]
 
     rotateDir = -1 if leftX < 0 else 1
-    rotateSpeed = 0.5
+    rotateSpeed = 0.1
     if abs(leftX) > 0.5:
-        payload = {
+        tank_payload = {
             "T": 1,
             "L": rotateSpeed * rotateDir,
             "R": rotateSpeed * rotateDir * -1,
         }
     else:
-        payload = {"T": 1, "L": speed, "R": speed}
+        tank_payload = {"T": 1, "L": speed, "R": speed}
+
+    ############## arm #################
+    MOV = 10
+    T_MOV = DEG2RAD(5)
+
+    Y_LOW = -100
+    Y_HIGH = 100
+    X_LOW = 100
+    X_HIGH = 400
+    Z_LOW = 100
+    Z_HIGH = 400
+    T_LOW = DEG2RAD(100)
+    T_HIGH = DEG2RAD(180)
+
+    arm_dis_x = state[Ps4Controls.RIGHT_STICK_X]
+    arm_dis_y = state[Ps4Controls.RIGHT_STICK_Y]
+    arm_dis_z = state[Ps4Controls.UP] + state[Ps4Controls.DOWN] * -1
+    arm_dis_t = state[Ps4Controls.LEFT] + state[Ps4Controls.RIGHT] * -1
+    print(arm_dis_x, arm_dis_y)
+
+    arm_cur_pos["y"] = IN_RANGE(arm_cur_pos["y"], Y_LOW, Y_HIGH, (arm_dis_x) * MOV * -1)
+
+    arm_cur_pos["x"] = IN_RANGE(arm_cur_pos["x"], X_LOW, X_HIGH, (arm_dis_y) * MOV * -1)
+    arm_cur_pos["z"] = IN_RANGE(arm_cur_pos["z"], Z_LOW, Z_HIGH, (arm_dis_z) * MOV * 1)
+    arm_cur_pos["t"] = IN_RANGE(
+        arm_cur_pos["t"], T_LOW, T_HIGH, (arm_dis_t) * T_MOV * 1
+    )
+
+    print(arm_cur_pos)
 
     try:
-        # r = requests.get(url + f"json?{str(payload)}")
-        r = requests.post(url, json=payload)
+        r = requests.post(tank_url, json=tank_payload, timeout=1)
     except requests.exceptions.ConnectionError:
         pass
+    except:
+        pass
 
+    print("finished sending tank")
+
+    try:
+        r = requests.post(arm_url, json=arm_cur_pos, timeout=1)
+    except requests.exceptions.ConnectionError:
+        pass
+    except:
+        pass
+
+    print("finished sending arm")
     return True
 
 
@@ -206,14 +262,17 @@ class PS4Controller(object):
                 print(self.axis_data[Ps4Controls.LEFT_STICK_Y])
 
                 # --------------- to be tested --------- #
-                # buttons = joystick.get_numbuttons()
-                # for i in range(buttons):
-                #     button = joystick.get_button(i)
-                #     print(f"Button {i}: {button}")
+                buttons = self.controller.get_numbuttons()
+                for i in range(buttons):
+                    button = self.controller.get_button(i)
+                    if i >= 11:
+                        self.axis_data[i] = button
+                    print(f"Button {i}: {button}")
 
-                # hats = joystick.get_numhats()
+                # hats = self.controller.get_numhats()
+                # print("hats", hats)
                 # for i in range(hats):
-                #     hat = joystick.get_hat(i)
+                #     hat = self.controller.get_hat(i)
                 #     print(f"Hat {i}: {hat}")
 
                 # --------------- to be tested --------- #
