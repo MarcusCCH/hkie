@@ -121,9 +121,13 @@ def DEG2RAD(x):
 arm_init_pos = {"T": 1041, "x": 311.94, "y": 1.91, "z": 232.72, "t": DEG2RAD(150)}
 arm_cur_pos = arm_init_pos
 
+import time
+
 
 def send(state):
-    tank_url = "http://192.168.43.159/js?"
+    start_time = time.time()
+    # tank_url = "http://192.168.43.159/js?"
+    tank_url = "http://192.168.4.1/js?"
     arm_url = "http://192.168.43.103/js?"
     for i in range(4):
         print(f"{i}: {state[i]}")
@@ -150,7 +154,7 @@ def send(state):
     Y_LOW = -100
     Y_HIGH = 100
     X_LOW = 100
-    X_HIGH = 400
+    X_HIGH = 500
     Z_LOW = 100
     Z_HIGH = 400
     T_LOW = DEG2RAD(100)
@@ -173,7 +177,7 @@ def send(state):
     print(arm_cur_pos)
 
     try:
-        r = requests.post(tank_url, json=tank_payload, timeout=1)
+        r = requests.post(tank_url, json=tank_payload, timeout=0.5)
     except requests.exceptions.ConnectionError:
         pass
     except:
@@ -181,14 +185,16 @@ def send(state):
 
     print("finished sending tank")
 
-    try:
-        r = requests.post(arm_url, json=arm_cur_pos, timeout=1)
-    except requests.exceptions.ConnectionError:
-        pass
-    except:
-        pass
+    # try:
+    #     r = requests.post(arm_url, json=arm_cur_pos, timeout=0.5)
+    # except requests.exceptions.ConnectionError:
+    #     pass
+    # except:
+    #     pass
 
     print("finished sending arm")
+    end_time = time.time()
+    print(f"time used: {end_time - start_time}")
     return True
 
 
@@ -243,6 +249,8 @@ class PS4Controller(object):
         millis = 0
         running = True
 
+        # connect_hotspot()
+
         while running:
             try:
                 axis_data = {0: 0, 1: 0, 3: 0, 4: 0}
@@ -267,7 +275,7 @@ class PS4Controller(object):
                     button = self.controller.get_button(i)
                     if i >= 11:
                         self.axis_data[i] = button
-                    print(f"Button {i}: {button}")
+                    # print(f"Button {i}: {button}")
 
                 # hats = self.controller.get_numhats()
                 # print("hats", hats)
